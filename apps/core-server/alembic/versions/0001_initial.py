@@ -6,15 +6,16 @@ Create Date: 2026-05-30
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 revision = "0001_initial"
 down_revision = None
 branch_labels = None
 depends_on = None
 
-inventory_status = sa.Enum("normal", "low_stock", "out_of_stock", "old_out_of_stock", "back_in_stock", "ignored", "snoozed", "invalid_stock_config", name="inventorystatus")
-user_role = sa.Enum("super_admin", "inventory_manager", "sales_manager", "readonly_viewer", "accountant", "purchase_manager", "supplier_manager", name="builtinrole")
-audit_action = sa.Enum("user_created", "user_updated", "user_deleted", "user_deactivated", "login_success", "login_failed", "role_changed", "permissions_changed", name="auditaction")
+inventory_status = postgresql.ENUM("normal", "low_stock", "out_of_stock", "old_out_of_stock", "back_in_stock", "ignored", "snoozed", "invalid_stock_config", name="inventorystatus", create_type=False)
+user_role = postgresql.ENUM("super_admin", "inventory_manager", "sales_manager", "readonly_viewer", "accountant", "purchase_manager", "supplier_manager", name="builtinrole", create_type=False)
+audit_action = postgresql.ENUM("user_created", "user_updated", "user_deleted", "user_deactivated", "login_success", "login_failed", "role_changed", "permissions_changed", name="auditaction", create_type=False)
 
 
 def upgrade() -> None:
