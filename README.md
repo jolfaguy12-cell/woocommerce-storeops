@@ -266,6 +266,7 @@ python3 scripts/check_db.py
 - API returns 401: verify API key, HMAC secret, timestamp, and HTTPS settings.
 - No products sync: confirm WooCommerce stock management and connector enabled state.
 - Worker jobs stuck: confirm Redis URL and Celery worker status. Run `docker compose exec celery-worker celery -A app.jobs.celery_app.celery_app inspect registered` and confirm `app.jobs.inventory_tasks.fast_inventory_scan` is listed. If old invalid messages remain after a deploy, restart `celery-worker` and `celery-beat`; purge Redis queues only if no important jobs are pending.
+- Docker build fails while exporting multiple Core Server/Celery images with `failed to prepare extraction snapshot` or `parent snapshot ... does not exist`: this is usually a Docker BuildKit/cache snapshot problem made worse by building the same context for several services in parallel. StoreOps now builds one shared `woocommerce-storeops-core-server:latest` image from `core-server`; `celery-worker` and `celery-beat` reuse that image instead of exporting duplicate builds. Pull this update and run `docker compose build --no-cache core-server && docker compose up -d core-server celery-worker celery-beat`. If Docker still reports the same snapshot error, clean the host builder cache with `docker builder prune` only after confirming no important builds are running.
 - Reports fail: confirm dependencies and writable temporary directories.
 
 ### Logs

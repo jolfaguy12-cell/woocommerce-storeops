@@ -1,5 +1,8 @@
+x-core-server-image: &core-server-image woocommerce-storeops-core-server:latest
+
 services:
   core-server:
+    image: *core-server-image
     build: ./apps/core-server
     env_file: .env
     ports:
@@ -11,7 +14,7 @@ services:
       - ./apps/core-server/app/logs:/app/app/logs
 
   celery-worker:
-    build: ./apps/core-server
+    image: *core-server-image
     env_file: .env
     command: celery -A app.jobs.celery_app.celery_app worker --loglevel=info
     depends_on:
@@ -19,7 +22,7 @@ services:
       - redis
 
   celery-beat:
-    build: ./apps/core-server
+    image: *core-server-image
     env_file: .env
     command: celery -A app.jobs.celery_app.celery_app beat --loglevel=info
     depends_on:

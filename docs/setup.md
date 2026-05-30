@@ -1,12 +1,23 @@
 # Installation Guide
 
 1. Copy `.env.example` to `.env` and replace secrets.
-2. Run `docker compose build`.
+2. Run `docker compose build core-server` to build the shared Core Server image used by the API, Celery worker, and Celery Beat.
 3. Run `docker compose up -d postgres redis`.
 4. Run `docker compose run --rm core-server alembic upgrade head`.
-5. Run `docker compose up -d`.
+5. Run `docker compose up -d core-server celery-worker celery-beat`.
 6. Install and configure the WordPress connector plugin.
 
+
+## Docker build snapshot errors
+
+If Docker fails during image export with `failed to prepare extraction snapshot` or `parent snapshot ... does not exist`, rebuild the single shared Core Server image instead of repeatedly exporting duplicate API/worker/beat images:
+
+```bash
+docker compose build --no-cache core-server
+docker compose up -d core-server celery-worker celery-beat
+```
+
+The Compose file intentionally gives `celery-worker` and `celery-beat` the same image as `core-server`; only `core-server` has a `build:` section. If the host Docker builder cache is already corrupted, run `docker builder prune` only when no important builds are running.
 
 ## Database host selection
 
