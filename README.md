@@ -107,17 +107,41 @@ Redis is used for cache and Celery broker/result backend. Docker Compose starts 
 
 ```bash
 cd apps/core-server
-celery -A app.jobs.celery_app worker -l info
+celery -A app.jobs.celery_app worker --loglevel=info
 ```
 
 ## 11. Scheduler setup
 
 ```bash
 cd apps/core-server
-celery -A app.jobs.celery_app beat -l info
+celery -A app.jobs.celery_app beat --loglevel=info
 ```
 
 Default inventory schedules are a fast scan every 60 seconds and a daily full scan target at 03:00 AM.
+
+Verify that workers registered the scheduled tasks:
+
+```bash
+docker compose exec celery-worker celery -A app.jobs.celery_app inspect registered
+```
+
+The registered task list must include `app.jobs.inventory_tasks.fast_inventory_scan` and the debug task `app.jobs.debug.ping`. You can trigger the debug task from inside the worker container:
+
+```bash
+docker compose exec celery-worker celery -A app.jobs.celery_app call app.jobs.debug.ping
+```
+
+If the worker previously received unregistered task messages, restart the worker and beat after deploying the fix:
+
+```bash
+docker compose restart celery-worker celery-beat
+```
+
+If old broken messages remain in Redis, purge only when it is safe and no important jobs are pending:
+
+```bash
+docker compose exec celery-worker celery -A app.jobs.celery_app purge
+```
 
 ## 12. HTTPS/SSL setup
 
@@ -236,7 +260,7 @@ python3 scripts/check_db.py
 
 - API returns 401: verify API key, HMAC secret, timestamp, and HTTPS settings.
 - No products sync: confirm WooCommerce stock management and connector enabled state.
-- Worker jobs stuck: confirm Redis URL and Celery worker status.
+- Worker jobs stuck: confirm Redis URL and Celery worker status. Run `docker compose exec celery-worker celery -A app.jobs.celery_app inspect registered` and confirm `app.jobs.inventory_tasks.fast_inventory_scan` is listed. If old invalid messages remain after a deploy, restart `celery-worker` and `celery-beat`; purge Redis queues only if no important jobs are pending.
 - Reports fail: confirm dependencies and writable temporary directories.
 
 ### Logs

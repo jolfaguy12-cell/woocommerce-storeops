@@ -14,8 +14,22 @@ uvicorn app.main:app --reload
 ## Workers
 
 ```bash
-celery -A app.jobs.celery_app worker -l info
-celery -A app.jobs.celery_app beat -l info
+celery -A app.jobs.celery_app worker --loglevel=info
+celery -A app.jobs.celery_app beat --loglevel=info
+```
+
+Verify registered tasks:
+
+```bash
+docker compose exec celery-worker celery -A app.jobs.celery_app inspect registered
+docker compose exec celery-worker celery -A app.jobs.celery_app call app.jobs.debug.ping
+```
+
+If old unregistered task messages remain after a deployment, restart worker/beat first. Purge the queue only when no important jobs are pending:
+
+```bash
+docker compose restart celery-worker celery-beat
+docker compose exec celery-worker celery -A app.jobs.celery_app purge
 ```
 
 ## Database preflight
