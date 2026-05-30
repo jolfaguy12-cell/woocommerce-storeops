@@ -9,6 +9,7 @@ from app.modules.users.models import AuditLog, User
 router = APIRouter()
 
 
+@router.get("/")
 @router.get("/audit")
 def audit_logs(
     limit: int = Query(default=100, ge=1, le=500),

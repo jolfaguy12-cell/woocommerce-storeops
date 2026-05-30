@@ -12,6 +12,7 @@ from app.config.settings import get_settings
 from app.core.datetime_utils import utc_now
 from app.modules.inventory.schemas import ProductSyncPayload
 from app.modules.inventory.upsert import upsert_products
+from app.modules.settings.service import get_setting_value
 from app.modules.sync.models import SyncJob, SyncJobStatus, SyncJobType
 from app.modules.users.service import record_audit
 
@@ -61,21 +62,21 @@ def _connector_url(path: str) -> str:
     return f"{base}/{path.lstrip('/')}"
 
 
-def fetch_wordpress_page(page: int, per_page: int = 50) -> dict:
+def fetch_wordpress_page(page: int, per_page: int = 50, timeout_seconds: int = 20, retry_count: int = 3, retry_delay_seconds: int = 2) -> dict:
     route = "/storeops/v1/products"
     query = {"page": page, "per_page": per_page, "status": "any"}
     url = _connector_url("products")
-    for attempt in range(1, 4):
+    for attempt in range(1, retry_count + 1):
         try:
-            with httpx.Client(timeout=20.0) as client:
+            with httpx.Client(timeout=float(timeout_seconds)) as client:
                 response = client.get(url, params=query, headers=_signed_headers(route, query))
                 response.raise_for_status()
                 return response.json()
         except Exception as exc:
             logger.warning("wordpress_page_fetch_failed page=%s attempt=%s error=%s", page, attempt, exc)
-            if attempt >= 3:
+            if attempt >= retry_count:
                 raise
-            time.sleep(2 ** (attempt - 1))
+            time.sleep(max(retry_delay_seconds, 0) * (2 ** (attempt - 1)))
     raise RuntimeError("unreachable")
 
 
@@ -85,10 +86,13 @@ def run_full_product_sync(db: Session, job_id: int) -> dict[str, int | str]:
         raise RuntimeError(f"Sync job {job_id} not found")
     mark_job(db, job, SyncJobStatus.running.value)
     page = 1
-    per_page = int(job.metadata_json.get("per_page", 50)) if job.metadata_json else 50
+    per_page = int(job.metadata_json.get("per_page", get_setting_value(db, "full_sync_batch_size", 50))) if job.metadata_json else int(get_setting_value(db, "full_sync_batch_size", 50))
+    timeout_seconds = int(get_setting_value(db, "sync_request_timeout_seconds", 20))
+    retry_count = int(get_setting_value(db, "sync_retry_count", 3))
+    retry_delay_seconds = int(get_setting_value(db, "sync_retry_delay_seconds", 2))
     try:
         while True:
-            result = fetch_wordpress_page(page, per_page)
+            result = fetch_wordpress_page(page, per_page, timeout_seconds, retry_count, retry_delay_seconds)
             items = result.get("items", [])
             payload = [ProductSyncPayload(**item) for item in items]
             stats = upsert_products(payload, db) if payload else {"processed_items": 0, "created_items": 0, "updated_items": 0, "failed_items": 0}

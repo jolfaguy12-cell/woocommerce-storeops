@@ -18,10 +18,10 @@ class BuiltInRole(str, enum.Enum):
 
 ROLE_PERMISSION_DEFAULTS: dict[str, set[str]] = {
     "super_admin": {
-        "dashboard.view", "sync.view", "sync.run_full", "sync.run_changed", "products.view",
-        "inventory.view", "inventory.manage", "reports.view", "reports.manage", "users.view",
+        "dashboard.view", "sync.view", "sync.run_full", "sync.run_changed", "products.view", "products.manage",
+        "inventory.view", "inventory.manage", "reports.view", "reports.manage", "notifications.view", "notifications.manage", "users.view",
         "users.create", "users.update", "users.delete", "roles.view", "roles.manage",
-        "settings.view", "settings.manage", "logs.view",
+        "settings.view", "settings.manage", "logs.view", "modules.view", "modules.manage",
     },
     "inventory_manager": {"dashboard.view", "sync.view", "sync.run_full", "sync.run_changed", "products.view", "inventory.view", "inventory.manage", "reports.view"},
     "sales_manager": {"dashboard.view", "products.view", "inventory.view", "reports.view"},
@@ -37,10 +37,13 @@ ALL_PERMISSIONS: dict[str, tuple[str, str]] = {
     "sync.run_full": ("sync", "Run full product sync"),
     "sync.run_changed": ("sync", "Run changed-products sync"),
     "products.view": ("products", "View synced products"),
+    "products.manage": ("products", "Manage synced product metadata"),
     "inventory.view": ("inventory", "View inventory"),
     "inventory.manage": ("inventory", "Manage inventory settings"),
     "reports.view": ("reports", "View reports"),
     "reports.manage": ("reports", "Manage reports"),
+    "notifications.view": ("notifications", "View notification settings"),
+    "notifications.manage": ("notifications", "Manage notification settings"),
     "users.view": ("users", "View users"),
     "users.create": ("users", "Create users"),
     "users.update": ("users", "Update users"),
@@ -50,6 +53,8 @@ ALL_PERMISSIONS: dict[str, tuple[str, str]] = {
     "settings.view": ("settings", "View settings"),
     "settings.manage": ("settings", "Manage settings"),
     "logs.view": ("logs", "View logs"),
+    "modules.view": ("modules", "View modules"),
+    "modules.manage": ("modules", "Manage modules"),
 }
 
 # Backward-compatible alias used by existing routes/docs.

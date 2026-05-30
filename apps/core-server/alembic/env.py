@@ -11,6 +11,7 @@ from app.db.session import Base
 from app.modules.inventory import models as inventory_models  # noqa: F401
 from app.modules.users import models as user_models  # noqa: F401
 from app.modules.sync import models as sync_models  # noqa: F401
+from app.modules.settings import models as settings_models  # noqa: F401
 
 config = context.config
 settings = get_settings()

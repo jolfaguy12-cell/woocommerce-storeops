@@ -9,6 +9,7 @@ from app.modules.users.routes import router as users_router
 from app.modules.sync.routes import router as sync_router
 from app.modules.products.routes import router as products_router
 from app.modules.logs.routes import router as logs_router
+from app.modules.settings.routes import router as settings_router
 from app.integrations.wordpress.routes import router as wordpress_router
 
 api_router = APIRouter()
@@ -21,4 +22,5 @@ api_router.include_router(users_router, prefix="/users", tags=["users"])
 api_router.include_router(sync_router, prefix="/sync", tags=["sync"])
 api_router.include_router(products_router, prefix="/products", tags=["products"])
 api_router.include_router(logs_router, prefix="/logs", tags=["logs"])
+api_router.include_router(settings_router, prefix="/settings", tags=["settings"])
 api_router.include_router(wordpress_router, prefix="/wordpress", tags=["wordpress"])

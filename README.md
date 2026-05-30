@@ -415,3 +415,131 @@ Run `scripts/backup.sh` to create PostgreSQL dumps. Store backups off-server and
 ## 27. Future development notes
 
 Next phases should complete dashboard UI, permission management, production-grade Telegram command handling, report template persistence, full duplicate-alert workflows, and future modules without moving heavy work into WordPress.
+
+## Admin web panel foundation
+
+The Core Server now serves the first browser-based admin panel directly from FastAPI. Open the panel at:
+
+```text
+http://127.0.0.1:8088/login
+```
+
+After successful login, authenticated users are redirected to `/dashboard`. Protected admin routes such as `/dashboard`, `/sync`, `/products`, `/users`, `/settings`, `/logs`, and `/modules` check the HTTP-only `storeops_access_token` cookie and redirect unauthenticated users back to `/login`.
+
+The admin layout includes a sidebar, top bar, current-user badge, logout button, page titles, cards, tables, loading/empty states, toast notifications, and a confirmation-modal foundation. Future module placeholders are visible as “Coming Soon” items only; no accounting, purchasing, supplier, or financial-report business logic is implemented in this phase.
+
+### Create the first Super Admin
+
+Set the bootstrap variables in `.env`:
+
+```env
+STOREOPS_ADMIN_USERNAME=admin
+STOREOPS_ADMIN_EMAIL=admin@example.com
+STOREOPS_ADMIN_PASSWORD=replace-with-a-long-secure-password
+```
+
+Then run either command:
+
+```bash
+docker compose exec core-server python3 scripts/create_admin.py
+# or
+docker compose exec core-server python3 -m app.cli.create_admin
+```
+
+The bootstrap command creates the first Super Admin only when no users exist. It refuses to create duplicate initial admins and never prints the password. Passwords are hashed before storage; plain-text passwords are never stored.
+
+### Login and logout
+
+Use the browser login page at `/login`, or call the API directly:
+
+```bash
+curl -i -X POST "http://127.0.0.1:8088/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"replace-with-a-long-secure-password"}'
+```
+
+The login endpoint accepts username or email and password, logs successful and failed login attempts, applies basic in-memory failed-login lockout protection, returns a bearer token, and sets an HTTP-only browser cookie. Logout is available from the panel and through `POST /api/v1/auth/logout`.
+
+### Users, roles, and permissions
+
+The admin foundation includes database tables for `users`, `roles`, `permissions`, `role_permissions`, and `audit_logs`. Default roles are:
+
+- Super Admin
+- Inventory Manager
+- Sales Manager
+- Read-only Viewer
+- Accountant, Purchase Manager, and Supplier Manager as prepared future roles
+
+Permissions are modular and include dashboard, sync, products, inventory, reports, notifications, users, roles, settings, logs, and modules permissions. Only Super Admin users can manage users and roles by default. User-management actions are logged to audit logs.
+
+The **Users & Roles** page is available at `/users`. The API endpoints remain under `/api/v1/users`.
+
+### Database-backed settings
+
+Runtime and business settings now live in the `system_settings` table instead of being hardcoded. Environment variables remain for bootstrap and infrastructure-level values such as database, Redis, JWT secret, and first-admin creation.
+
+Settings are grouped in the admin panel at `/settings`:
+
+- General Settings
+- WordPress Connector Settings
+- Sync Settings
+- Inventory Settings
+- Notification Settings
+- Report Settings
+- Security Settings
+- System Settings
+
+The settings API is available at:
+
+```bash
+curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" http://127.0.0.1:8088/api/v1/settings/
+```
+
+Editable settings can be updated with:
+
+```bash
+curl -X PATCH "http://127.0.0.1:8088/api/v1/settings/full_sync_batch_size" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"value":50}'
+```
+
+Settings changes are validated, persisted, and recorded in audit logs. Secret settings are masked when returned to the UI.
+
+### Sync Center and product sync foundation
+
+The **Sync Center** is available at `/sync`. Users with `sync.view` can view sync status and history. Users with `sync.run_full` can trigger a full product sync, and users with `sync.run_changed` can trigger changed-products sync. Sync execution stays in Celery; HTTP requests only queue jobs.
+
+Useful commands:
+
+```bash
+docker compose logs core-server --tail=100
+docker compose logs celery-worker --tail=100
+docker compose logs celery-beat --tail=100
+docker compose exec celery-worker celery -A app.jobs.celery_app.celery_app inspect registered
+```
+
+Trigger full sync from API:
+
+```bash
+curl -X POST "http://127.0.0.1:8088/api/v1/sync/full-products" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+View sync jobs:
+
+```bash
+curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" http://127.0.0.1:8088/api/v1/sync/jobs
+```
+
+View imported products:
+
+```bash
+curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" "http://127.0.0.1:8088/api/v1/products?per_page=25"
+```
+
+### Database design principle
+
+The database is intentionally not overbuilt. This phase keeps only the tables required for authentication, RBAC, settings, audit logs, sync jobs, and the WooCommerce product catalog foundation. Future modules such as Accounting, Orders, Purchases, Suppliers, Sales Analytics, and Financial Reports will add their own tables later through small, sequential Alembic migrations when their implementation actually begins.
+
+This keeps the schema minimal, understandable, and future-compatible without pretending that future modules are already implemented.

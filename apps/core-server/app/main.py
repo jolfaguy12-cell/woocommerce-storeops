@@ -6,6 +6,7 @@ from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.router import api_router
+from app.web.routes import router as web_router
 from app.config.settings import get_settings
 from app.core.logging import configure_logging
 
@@ -23,3 +24,6 @@ app.include_router(api_router, prefix=settings.api_prefix)
 @app.get("/health", tags=["system"])
 def health_check() -> dict[str, str]:
     return {"status": "ok", "service": settings.app_name}
+
+
+app.include_router(web_router)

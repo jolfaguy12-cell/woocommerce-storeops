@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config.settings import get_settings
@@ -46,20 +46,22 @@ def _check_lockout(username: str) -> None:
 def login(payload: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> dict[str, object]:
     if not payload.username or not payload.password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username and password are required")
-    _check_lockout(payload.username)
-    user = db.scalar(select(User).where(User.username == payload.username))
+    login_id = payload.username.strip()
+    _check_lockout(login_id.lower())
+    user = db.scalar(select(User).where(or_(User.username == login_id, User.email == login_id)))
     if user is None or not user.is_active or not verify_password(payload.password, user.password_hash):
-        FAILED_LOGIN_ATTEMPTS[payload.username].append(datetime.now(timezone.utc))
-        record_audit(db, "login_failure", module="auth", metadata={"username": payload.username}, ip_address=_client_ip(request), user_agent=request.headers.get("user-agent"))
+        FAILED_LOGIN_ATTEMPTS[login_id.lower()].append(datetime.now(timezone.utc))
+        record_audit(db, "login_failure", module="auth", metadata={"username": login_id}, ip_address=_client_ip(request), user_agent=request.headers.get("user-agent"))
         db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
-    FAILED_LOGIN_ATTEMPTS.pop(payload.username, None)
+    FAILED_LOGIN_ATTEMPTS.pop(login_id.lower(), None)
     user.last_login_at = datetime.now(timezone.utc)
     record_audit(db, "login_success", user.id, "auth", "user", user.id, ip_address=_client_ip(request), user_agent=request.headers.get("user-agent"))
     db.commit()
     access_token = create_access_token(user.username, {"role": user.role.value, "permissions": sorted(user.effective_permissions())})
     settings = get_settings()
-    response.set_cookie("storeops_access_token", access_token, httponly=True, secure=settings.environment == "production", samesite="lax", max_age=3600)
+    cookie_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    response.set_cookie("storeops_access_token", access_token, httponly=True, secure=cookie_secure, samesite="lax", max_age=settings.access_token_expire_minutes * 60)
     return {"access_token": access_token, "token_type": "bearer", "must_change_password": user.must_change_password}
 
 
@@ -71,9 +73,11 @@ def logout(request: Request, response: Response, current_user: User = Depends(ge
     return {"status": "ok"}
 
 
-@router.get("/me", response_model=UserRead)
-def me(current_user: User = Depends(get_current_user)):
-    return current_user
+@router.get("/me")
+def me(current_user: User = Depends(get_current_user)) -> dict[str, object]:
+    payload = UserRead.model_validate(current_user).model_dump(mode="json")
+    payload["permissions"] = sorted(current_user.effective_permissions())
+    return payload
 
 
 @router.post("/change-password")

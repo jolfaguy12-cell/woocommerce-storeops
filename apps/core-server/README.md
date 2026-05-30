@@ -44,3 +44,33 @@ python3 scripts/check_db.py
 ```
 
 Use `postgres` as the database host inside Docker Compose and `127.0.0.1` or `localhost` when running Alembic directly on the host.
+
+## Admin web panel
+
+The Core Server serves the first StoreOps admin panel at `/login`. After login, users enter `/dashboard`; protected admin pages redirect unauthenticated requests back to `/login`.
+
+Create the first Super Admin after migrations:
+
+```bash
+docker compose exec core-server python3 scripts/create_admin.py
+# or
+docker compose exec core-server python3 -m app.cli.create_admin
+```
+
+Required environment variables:
+
+```env
+STOREOPS_ADMIN_USERNAME=admin
+STOREOPS_ADMIN_EMAIL=admin@example.com
+STOREOPS_ADMIN_PASSWORD=replace-with-a-long-secure-password
+```
+
+The admin panel currently includes Overview, Sync Center, All Products, Users & Roles, Settings, Logs, and Modules foundations. Future modules are navigation placeholders only.
+
+## Database-backed settings
+
+Runtime/business settings are stored in `system_settings` and exposed through `/api/v1/settings`. Infrastructure/bootstrap values stay in `.env`. Settings are grouped by General, WordPress Connector, Sync, Inventory, Notifications, Reports, Security, and System. Updates are validated and recorded in audit logs.
+
+## Minimal schema principle
+
+This service intentionally avoids large premature future schemas. Current migrations cover auth/RBAC, audit logs, settings, sync jobs, and product sync foundations only. Accounting, purchasing, supplier, order, sales analytics, and financial-report tables should be added later through focused Alembic migrations when those modules are actively implemented.

@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.jobs.inventory_tasks import changed_products_sync, full_inventory_scan
 from app.modules.auth.dependencies import require_permission
+from app.modules.inventory.models import Product
 from app.modules.sync.models import SyncJob, SyncJobStatus, SyncJobType, SyncTrigger
 from app.modules.sync.schemas import SyncJobRead, SyncTriggerResponse
+from app.modules.settings.service import get_setting_value
 from app.modules.sync.service import create_sync_job, running_full_sync
 from app.modules.users.models import User
 from app.modules.users.service import record_audit
@@ -20,9 +22,15 @@ def status_view(db: Session = Depends(get_db), current_user: User = Depends(requ
     last_full_success = db.scalar(select(SyncJob).where(SyncJob.job_type == SyncJobType.full_product_sync.value, SyncJob.status == SyncJobStatus.completed.value).order_by(SyncJob.finished_at.desc()))
     last_full_failed = db.scalar(select(SyncJob).where(SyncJob.job_type == SyncJobType.full_product_sync.value, SyncJob.status == SyncJobStatus.failed.value).order_by(SyncJob.finished_at.desc()))
     last_changed = db.scalar(select(SyncJob).where(SyncJob.job_type == SyncJobType.changed_products_sync.value).order_by(SyncJob.created_at.desc()))
+    total_products = db.scalar(select(func.count()).select_from(Product).where(Product.woocommerce_variation_id.is_(None))) or 0
+    total_variations = db.scalar(select(func.count()).select_from(Product).where(Product.woocommerce_variation_id.is_not(None))) or 0
     return {
         "current_job": current.id if current else None,
+        "running_job": SyncJobRead.model_validate(current).model_dump(mode="json") if current else None,
         "current_status": current.status if current else "idle",
+        "total_products": total_products,
+        "total_variations": total_variations,
+        "wordpress_connection": "configured",
         "last_successful_full_sync": last_full_success.finished_at if last_full_success else None,
         "last_failed_full_sync": last_full_failed.finished_at if last_full_failed else None,
         "last_changed_products_sync": last_changed.finished_at if last_changed else None,
@@ -47,7 +55,8 @@ def trigger_full_products(db: Session = Depends(get_db), current_user: User = De
     existing = running_full_sync(db)
     if existing:
         return SyncTriggerResponse(job_id=existing.id, status=existing.status, message="Full product sync is already running or pending")
-    job = create_sync_job(db, SyncJobType.full_product_sync.value, SyncTrigger.manual.value, current_user.id, {"per_page": 50})
+    per_page = int(get_setting_value(db, "full_sync_batch_size", 50))
+    job = create_sync_job(db, SyncJobType.full_product_sync.value, SyncTrigger.manual.value, current_user.id, {"per_page": per_page})
     record_audit(db, "full_sync_triggered", current_user.id, "sync", "sync_job", job.id)
     db.commit()
     task = full_inventory_scan.delay(job.id)
