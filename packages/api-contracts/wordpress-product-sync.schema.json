@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StoreOps WordPress Product Sync Payload",
+  "type": "object",
+  "required": ["woocommerce_product_id", "product_type", "product_status", "product_name", "stock_status", "manage_stock"],
+  "properties": {
+    "site_id": {"type": "string"},
+    "woocommerce_product_id": {"type": "integer"},
+    "woocommerce_variation_id": {"type": ["integer", "null"]},
+    "parent_woocommerce_product_id": {"type": ["integer", "null"]},
+    "product_type": {"type": "string"},
+    "product_status": {"type": "string"},
+    "product_name": {"type": "string"},
+    "variation_attributes": {"type": ["object", "null"]},
+    "sku": {"type": ["string", "null"]},
+    "stock_quantity": {"type": ["integer", "null"]},
+    "stock_status": {"type": "string"},
+    "manage_stock": {"type": "boolean"},
+    "category_ids": {"type": "array", "items": {"type": "integer"}},
+    "category_names": {"type": "array", "items": {"type": "string"}},
+    "product_edit_url": {"type": ["string", "null"]},
+    "date_created": {"type": ["string", "null"], "format": "date-time"},
+    "date_modified": {"type": ["string", "null"], "format": "date-time"},
+    "last_synced_at": {"type": ["string", "null"], "format": "date-time"}
+  }
+}
