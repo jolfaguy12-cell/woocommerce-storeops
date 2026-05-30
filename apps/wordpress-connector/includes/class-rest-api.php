@@ -30,6 +30,8 @@ class StoreOps_REST_API {
         $cursor = (int) $request->get_param('cursor');
         $items = StoreOps_Product_Reader::changed_since($cursor, $limit);
 
+        update_option('storeops_last_successful_sync_at', current_time('mysql'), false);
+
         return [
             'items' => $items,
             'next_cursor' => time(),

@@ -1,6 +1,6 @@
 # Architecture
 
-WooCommerce StoreOps separates WordPress collection from Core Server processing. WordPress exposes only necessary WooCommerce data through secure REST endpoints. The Python Core Server owns heavy inventory analysis, scheduled sync, queues, Telegram, reports, dashboard APIs, authentication, RBAC, and logs.
+WooCommerce StoreOps separates WordPress collection from Core Server processing. WordPress exposes only necessary WooCommerce data through secure REST endpoints. The Python 3 Core Server owns heavy inventory analysis, scheduled sync, queues, Telegram, reports, dashboard APIs, authentication, RBAC, and logs.
 
 ## Modules
 

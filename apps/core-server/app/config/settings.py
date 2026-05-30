@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     secret_key: str = Field(default="change-me", validation_alias="SECRET_KEY")
     access_token_expire_minutes: int = 60
 
-    database_url: str = Field(default="postgresql+psycopg://storeops:storeops@postgres:5432/storeops", validation_alias="DATABASE_URL")
+    database_url: str = Field(default="postgresql+psycopg://storeops:storeops_password@postgres:5432/storeops", validation_alias="DATABASE_URL")
     redis_url: str = Field(default="redis://redis:6379/0", validation_alias="REDIS_URL")
     celery_broker_url: str = Field(default="redis://redis:6379/1", validation_alias="CELERY_BROKER_URL")
     celery_result_backend: str = Field(default="redis://redis:6379/2", validation_alias="CELERY_RESULT_BACKEND")
