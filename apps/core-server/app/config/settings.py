@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     celery_broker_url: str = Field(default="redis://redis:6379/1", validation_alias="CELERY_BROKER_URL")
     celery_result_backend: str = Field(default="redis://redis:6379/2", validation_alias="CELERY_RESULT_BACKEND")
 
+    wordpress_connector_url: str = Field(default="", validation_alias="WORDPRESS_CONNECTOR_URL")
     wordpress_api_key: str = Field(default="change-me", validation_alias="WORDPRESS_API_KEY")
     wordpress_hmac_secret: str = Field(default="change-me", validation_alias="WORDPRESS_HMAC_SECRET")
     hmac_timestamp_tolerance_seconds: int = 300
@@ -33,6 +34,10 @@ class Settings(BaseSettings):
 
     date_display_mode: str = Field(default="jalali", validation_alias="DATE_DISPLAY_MODE")
     timezone: str = Field(default="Asia/Tehran", validation_alias="TIMEZONE")
+
+    storeops_admin_username: str | None = Field(default=None, validation_alias="STOREOPS_ADMIN_USERNAME")
+    storeops_admin_email: str | None = Field(default=None, validation_alias="STOREOPS_ADMIN_EMAIL")
+    storeops_admin_password: str | None = Field(default=None, validation_alias="STOREOPS_ADMIN_PASSWORD")
 
     telegram_enabled: bool = False
     telegram_bot_token: str | None = None

@@ -315,6 +315,70 @@ Change the internal app port in `.env` if `8088` is occupied, then restart Docke
 
 Run the Core Server on an internal localhost port and configure the existing Nginx to proxy HTTPS traffic to it. Do not start another public Nginx listener on `80`/`443` if the server already has Nginx running. Avoid conflicts with validator/geth/grafana/nginx services and existing Docker containers.
 
+
+## Authentication and first Super Admin
+
+Create the first Super Admin after migrations by setting these variables in `.env`:
+
+```env
+STOREOPS_ADMIN_USERNAME=admin
+STOREOPS_ADMIN_EMAIL=admin@example.com
+STOREOPS_ADMIN_PASSWORD=change-this-admin-password
+```
+
+Then run from the repository root or inside the Core Server container:
+
+```bash
+python3 scripts/create_admin.py
+# or
+docker compose exec core-server python3 -m app.cli.create_admin
+```
+
+The bootstrap command creates a Super Admin only when no users exist, never prints the password, and marks the account to change password on first login. Dashboard auth uses JWT bearer tokens and an HTTP-only `storeops_access_token` cookie for browser sessions.
+
+Auth endpoints:
+
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/auth/change-password`
+
+## Roles and permissions
+
+Built-in roles are Super Admin, Inventory Manager, Sales Manager, and Read-only Viewer, with future roles prepared for Accountant, Purchase Manager, and Supplier Manager. Permissions include `dashboard.view`, `sync.view`, `sync.run_full`, `sync.run_changed`, `products.view`, `inventory.view`, `inventory.manage`, `reports.view`, `reports.manage`, `users.view`, `users.create`, `users.update`, `users.delete`, `roles.view`, `roles.manage`, `settings.view`, `settings.manage`, and `logs.view`. Only Super Admin can manage users and roles by default.
+
+## Sync Center and product import
+
+The Sync Center runs product sync in Celery, not inside HTTP requests and not in WordPress. Use these endpoints:
+
+- `GET /api/v1/sync/status`
+- `GET /api/v1/sync/jobs`
+- `GET /api/v1/sync/jobs/{job_id}`
+- `POST /api/v1/sync/full-products`
+- `POST /api/v1/sync/changed-products`
+- `POST /api/v1/sync/check-wordpress`
+
+`POST /api/v1/sync/full-products` queues `app.jobs.inventory_tasks.full_inventory_scan`, creates a `sync_jobs` record, prevents duplicate full syncs, and stores progress and result counts. Product fetches are paginated with a safe batch size of 50 to avoid WordPress overload.
+
+## All Products API
+
+Use `GET /api/v1/products` with `products.view` permission to inspect synced products. It supports pagination, sorting, and filters for search, product type/status, stock status, manage stock, SKU, WooCommerce product ID, variation ID, and parent product ID.
+
+## Celery sync troubleshooting
+
+```bash
+docker compose logs celery-worker --tail=100
+docker compose logs celery-beat --tail=100
+docker compose exec celery-worker celery -A app.jobs.celery_app.celery_app inspect registered
+```
+
+Verify products after sync:
+
+```bash
+curl -H "Authorization: Bearer <token>" "http://127.0.0.1:8088/api/v1/products?per_page=20"
+curl -H "Authorization: Bearer <token>" "http://127.0.0.1:8088/api/v1/sync/jobs"
+```
+
 ## 23. Deployment checklist
 
 - Replace all secrets.
