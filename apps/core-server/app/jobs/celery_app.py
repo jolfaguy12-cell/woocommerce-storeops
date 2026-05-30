@@ -1,3 +1,4 @@
+import importlib
 import logging
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
 
@@ -11,7 +12,7 @@ settings = get_settings()
 
 TASK_MODULES = (
     "app.jobs.inventory_tasks",
-    "app.jobs.debug",
+    "app.jobs.debug_tasks",
 )
 
 celery_app = Celery(
@@ -21,18 +22,24 @@ celery_app = Celery(
     include=list(TASK_MODULES),
 )
 
-# Expose a conventional `app` symbol so `celery -A app.jobs.celery_app worker`
-# and tools that look for `app`/`celery` both resolve the same Celery instance.
+# Also expose a conventional `app` symbol for Celery tooling, but Docker Compose
+# uses the explicit variable path `app.jobs.celery_app.celery_app`.
 app = celery_app
 
 celery_app.conf.imports = TASK_MODULES
 celery_app.conf.beat_schedule = {
     "inventory-fast-scan-every-minute": {
         "task": "app.jobs.inventory_tasks.fast_inventory_scan",
-        "schedule": settings.inventory_fast_scan_interval_seconds,
+        "schedule": float(settings.inventory_fast_scan_interval_seconds),
     },
 }
 celery_app.conf.timezone = "UTC"
+
+# Import task modules immediately so `inspect registered` is never empty because
+# the worker started without importing task definitions. Tasks import this same
+# `celery_app` instance, so registration is stable for worker and beat.
+for task_module in TASK_MODULES:
+    importlib.import_module(task_module)
 
 
 def mask_url(url: str) -> str:
@@ -45,15 +52,15 @@ def mask_url(url: str) -> str:
     return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
+def registered_storeops_tasks() -> list[str]:
+    return sorted(name for name in celery_app.tasks.keys() if name.startswith("app.jobs."))
+
+
 def log_celery_configuration(active_logger: logging.Logger) -> None:
-    registered_tasks = sorted(
-        name for name in celery_app.tasks.keys()
-        if name.startswith("app.jobs.")
-    )
-    active_logger.info("StoreOps Celery app path: app.jobs.celery_app:celery_app")
+    active_logger.info("StoreOps Celery app path: app.jobs.celery_app.celery_app")
     active_logger.info("StoreOps Celery broker: %s", mask_url(settings.celery_broker_url))
     active_logger.info("StoreOps Celery loaded task modules: %s", ", ".join(TASK_MODULES))
-    active_logger.info("StoreOps Celery registered StoreOps tasks: %s", ", ".join(registered_tasks) or "none yet")
+    active_logger.info("StoreOps Celery registered StoreOps tasks: %s", ", ".join(registered_storeops_tasks()) or "none")
     active_logger.info("StoreOps Celery beat schedule entries: %s", ", ".join(sorted(celery_app.conf.beat_schedule.keys())))
 
 

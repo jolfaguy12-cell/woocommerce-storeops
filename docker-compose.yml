@@ -13,7 +13,7 @@ services:
   celery-worker:
     build: ./apps/core-server
     env_file: .env
-    command: celery -A app.jobs.celery_app worker --loglevel=info
+    command: celery -A app.jobs.celery_app.celery_app worker --loglevel=info
     depends_on:
       - postgres
       - redis
@@ -21,7 +21,7 @@ services:
   celery-beat:
     build: ./apps/core-server
     env_file: .env
-    command: celery -A app.jobs.celery_app beat --loglevel=info
+    command: celery -A app.jobs.celery_app.celery_app beat --loglevel=info
     depends_on:
       - postgres
       - redis
