@@ -33,6 +33,8 @@ After migrations, run:
 docker compose exec core-server python3 -m app.cli.create_admin
 ```
 
+The admin password is hashed with PBKDF2-SHA256 and is never printed. If an older build reported a passlib/bcrypt `password cannot be longer than 72 bytes` error, pull this update, rebuild the Core Server image, and run the bootstrap command again.
+
 If running on the host from the repository root, run:
 
 ```bash

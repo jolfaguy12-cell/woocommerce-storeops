@@ -336,6 +336,8 @@ docker compose exec core-server python3 -m app.cli.create_admin
 
 The bootstrap command creates a Super Admin only when no users exist, never prints the password, and marks the account to change password on first login. Dashboard auth uses JWT bearer tokens and an HTTP-only `storeops_access_token` cookie for browser sessions.
 
+Password hashes use PBKDF2-SHA256 with per-password salts in the Core Server, so the first-admin bootstrap does not depend on bcrypt and supports long generated passwords without the bcrypt 72-byte input limit.
+
 Auth endpoints:
 
 - `POST /api/v1/auth/login`
