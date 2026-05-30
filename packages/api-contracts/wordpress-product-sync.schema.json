@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StoreOps WordPress Product Sync Payload",
+  "type": "object",
+  "required": ["product_id", "name", "stock_status", "manage_stock"],
+  "properties": {
+    "site_id": {"type": "string"},
+    "product_id": {"type": "integer"},
+    "variation_id": {"type": ["integer", "null"]},
+    "parent_product_id": {"type": ["integer", "null"]},
+    "name": {"type": "string"},
+    "variation_attributes": {"type": ["object", "null"]},
+    "sku": {"type": ["string", "null"]},
+    "stock_quantity": {"type": ["integer", "null"]},
+    "stock_status": {"type": "string"},
+    "manage_stock": {"type": "boolean"},
+    "category": {"type": ["string", "null"]},
+    "product_edit_url": {"type": ["string", "null"]},
+    "last_modified_at": {"type": ["string", "null"], "format": "date-time"}
+  }
+}
