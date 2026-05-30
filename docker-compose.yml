@@ -3,7 +3,7 @@ services:
     build: ./apps/core-server
     env_file: .env.example
     ports:
-      - "8000:8000"
+      - "${APP_HOST:-127.0.0.1}:${APP_PORT:-8088}:8000"
     depends_on:
       - postgres
       - redis
@@ -34,19 +34,17 @@ services:
       POSTGRES_PASSWORD: storeops_password
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
 
   nginx:
     image: nginx:1.27-alpine
-    ports:
-      - "80:80"
-      - "443:443"
+    profiles: ["edge"]
     volumes:
       - ./deployment/nginx/storeops.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:

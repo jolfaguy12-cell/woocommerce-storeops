@@ -16,3 +16,5 @@ reportlab==4.2.5
 structlog==24.4.0
 slowapi==0.1.9
 pytest==8.3.4
+jdatetime==5.0.0
+email-validator==2.2.0

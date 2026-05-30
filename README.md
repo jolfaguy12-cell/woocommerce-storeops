@@ -15,7 +15,8 @@ Phase 1 rebuilds the repository from scratch with a production-oriented foundati
 - **Report Builder**: Core-owned Excel/PDF generation.
 - **Inventory Module**: first active module, supporting low stock, out of stock, old out of stock, back in stock, ignored, snoozed, and invalid stock config states.
 
-The key performance rule is that WordPress must not perform heavy analysis, report generation, Telegram messaging, or normal-traffic full scans.
+The key performance rule is that WordPress must not perform heavy analysis, report generation, Telegram messaging, or normal-traffic full scans. The WordPress Connector is only a secure bridge for WooCommerce data, while all inventory rules, reports, Telegram settings, user management, localization, analytics, and future accounting/purchasing modules belong to the Python 3 Core Server.
+
 
 ## 3. Repository structure
 
@@ -48,8 +49,8 @@ scripts/                   Setup and backup scripts
 1. Copy `apps/wordpress-connector` into `wp-content/plugins/woocommerce-storeops-connector`.
 2. Activate it from WordPress Admin.
 3. Open **Settings → StoreOps Connector**.
-4. Enable the connector, enter the Core Server URL, and set an API key.
-5. Keep Telegram tokens out of WordPress; Telegram is configured only in the Core Server.
+4. Enable the connector, enter the Core Server URL, API key, and HMAC secret.
+5. Keep inventory thresholds, Telegram, reports, alerts, and business settings out of WordPress; they are configured only in the Python 3 Core Server dashboard.
 
 ## 6. Python 3 Core Server installation
 
@@ -133,7 +134,7 @@ Supported commands planned for the Core Server are `status`, `low`, `out`, `repo
 
 ## 14. WooCommerce setup
 
-WooCommerce must manage stock for products that should be analyzed. The connector supports simple and variable products and exposes product IDs, variation IDs, SKUs, category, stock status, quantity, edit URL, and modification time.
+WooCommerce products should be synced as a complete catalog mirror, whether manage stock is enabled or disabled. The connector supports simple products, variable products, and variations, and exposes WooCommerce product IDs, variation IDs, parent IDs, product type, product status, SKUs, category IDs/names, stock status, quantity, edit URL, creation time, and modification time.
 
 ## 15. API security setup
 
@@ -241,6 +242,49 @@ python3 scripts/check_db.py
 ### Logs
 
 Core Server logs are written to `apps/core-server/app/logs/storeops.log` by default. The database connectivity check writes to `apps/core-server/app/logs/db-check.log`. Logs rotate automatically and must not include secrets.
+
+## Jalali date support
+
+StoreOps stores timestamps as timezone-aware UTC Gregorian values in PostgreSQL. Display/export layers can render dates as Gregorian or Jalali/Persian based on `DATE_DISPLAY_MODE`. The default in `.env.example` is `DATE_DISPLAY_MODE=jalali` with `TIMEZONE=Asia/Tehran`. Dashboard pages, reports, and Telegram messages should call the Core Server datetime utilities instead of storing Jalali values as primary database timestamps.
+
+## User and role management
+
+The Python 3 Core Server owns dashboard user management. It supports username/password login, secure password hashing, user create/update/deactivate endpoints, modular permissions, and audit logs for login, failed login, user creation, role changes, permission changes, and deactivation. Built-in roles are Super Admin, Inventory Manager, Sales Manager, Read-only Viewer, Accountant, Purchase Manager, and Supplier Manager. Only Super Admin should create/delete other administrators by default.
+
+Core permissions include `inventory.view`, `inventory.manage`, `inventory.export`, `reports.view`, `reports.manage`, `telegram.manage`, `users.view`, `users.create`, `users.update`, `users.delete`, `settings.manage`, `logs.view`, and `modules.manage`.
+
+## Importing all WooCommerce products
+
+The Inventory module maintains a complete product catalog mirror, not only low-stock or out-of-stock products. Full sync imports/updates simple products, variable products, variations, in-stock products, out-of-stock products, draft, published, private, pending, and trashed products when accessible from WooCommerce admin APIs. Every record remains linked to WooCommerce through `woocommerce_product_id`, `woocommerce_variation_id`, and `parent_woocommerce_product_id`, so future accounting, purchasing, supplier, cost, profit, and financial report modules can reuse the same catalog records.
+
+The dashboard includes an All Products page with filters for product type, product status, stock status, inventory status, and manage-stock state, plus search by product name, SKU, WooCommerce product ID, and WooCommerce variation ID.
+
+## WordPress Connector minimal responsibility
+
+The WordPress Connector settings page is intentionally limited to connector enabled, Core Server URL, API key, HMAC secret, connection test, connection status, last successful ping, last failed ping, and last successful sync. It must not contain low-stock thresholds, Telegram settings, social network settings, inventory rules, report customization, alert templates, user/role management, product analytics, or accounting preparation.
+
+## Port conflict prevention
+
+This server may already have SSH, DNS, Nginx, Grafana, geth, Lighthouse, Charon, Prometheus, Loki, MEV Boost, and existing Python/Uvicorn services running. Do not bind WooCommerce StoreOps to occupied ports such as `22`, `53`, `80`, `443`, `3000`, `30303`, `8545`, `8551`, `9000`, `3610`, `5000`, `6363`, `9090`, `3100`, or `18550`.
+
+Check occupied ports before deployment:
+
+```bash
+ss -tulpn
+```
+
+The safe default is:
+
+```env
+APP_HOST=127.0.0.1
+APP_PORT=8088
+```
+
+Change the internal app port in `.env` if `8088` is occupied, then restart Docker Compose. PostgreSQL and Redis are not publicly exposed by default; Docker Compose uses `expose` instead of host `ports` for those services. Public HTTPS should be handled by the existing host Nginx on ports `80`/`443`, proxying a domain/subdomain to `127.0.0.1:8088`.
+
+## Safe deployment with Nginx reverse proxy
+
+Run the Core Server on an internal localhost port and configure the existing Nginx to proxy HTTPS traffic to it. Do not start another public Nginx listener on `80`/`443` if the server already has Nginx running. Avoid conflicts with validator/geth/grafana/nginx services and existing Docker containers.
 
 ## 23. Deployment checklist
 

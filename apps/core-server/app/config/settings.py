@@ -9,7 +9,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "WooCommerce StoreOps"
-    environment: str = Field(default="development", validation_alias="ENVIRONMENT")
+    app_host: str = Field(default="127.0.0.1", validation_alias="APP_HOST")
+    app_port: int = Field(default=8088, validation_alias="APP_PORT")
+    environment: str = Field(default="production", validation_alias="ENVIRONMENT")
     api_prefix: str = "/api/v1"
     secret_key: str = Field(default="change-me", validation_alias="SECRET_KEY")
     access_token_expire_minutes: int = 60
@@ -28,6 +30,9 @@ class Settings(BaseSettings):
     inventory_old_oos_days: int = 30
     inventory_full_scan_cron: str = "0 3 * * *"
     inventory_fast_scan_interval_seconds: int = 60
+
+    date_display_mode: str = Field(default="jalali", validation_alias="DATE_DISPLAY_MODE")
+    timezone: str = Field(default="Asia/Tehran", validation_alias="TIMEZONE")
 
     telegram_enabled: bool = False
     telegram_bot_token: str | None = None

@@ -18,6 +18,16 @@ class StoreOps_REST_API {
             ],
         ]);
 
+        register_rest_route('storeops/v1', '/products/full-sync', [
+            'methods' => WP_REST_Server::READABLE,
+            'permission_callback' => ['StoreOps_Security', 'verify_request'],
+            'callback' => [__CLASS__, 'full_sync_products'],
+            'args' => [
+                'page' => ['default' => 1, 'sanitize_callback' => 'absint'],
+                'limit' => ['default' => 100, 'sanitize_callback' => 'absint'],
+            ],
+        ]);
+
         register_rest_route('storeops/v1', '/connection-test', [
             'methods' => WP_REST_Server::READABLE,
             'permission_callback' => ['StoreOps_Security', 'verify_request'],
@@ -36,6 +46,22 @@ class StoreOps_REST_API {
             'items' => $items,
             'next_cursor' => time(),
             'has_more' => count($items) >= $limit,
+        ];
+    }
+
+    public static function full_sync_products(WP_REST_Request $request): array {
+        $limit = min(max((int) $request->get_param('limit'), 1), 250);
+        $page = max((int) $request->get_param('page'), 1);
+        $result = StoreOps_Product_Reader::all_products($page, $limit);
+
+        update_option('storeops_last_successful_sync_at', current_time('mysql'), false);
+
+        return [
+            'items' => $result['items'],
+            'page' => $page,
+            'total' => $result['total'],
+            'pages' => $result['pages'],
+            'has_more' => $page < $result['pages'],
         ];
     }
 }
