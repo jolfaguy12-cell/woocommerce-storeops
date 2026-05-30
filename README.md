@@ -138,6 +138,7 @@ docker compose exec celery-worker celery -A app.jobs.celery_app.celery_app call 
 If the worker previously received unregistered task messages, restart the worker and beat after deploying the fix:
 
 ```bash
+docker compose up -d --build core-server celery-worker celery-beat
 docker compose restart celery-worker celery-beat
 ```
 

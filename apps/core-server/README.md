@@ -30,6 +30,7 @@ docker compose exec celery-worker celery -A app.jobs.celery_app.celery_app call 
 If `inspect registered` returns `- empty -`, the worker is running but task modules were not imported into the Celery app. Check `celery_app.conf.imports`, explicit task-module imports, and the Docker Compose `-A app.jobs.celery_app.celery_app` app path. If old unregistered task messages remain after a deployment, restart worker/beat first. Purge the queue only when no important jobs are pending:
 
 ```bash
+docker compose up -d --build core-server celery-worker celery-beat
 docker compose restart celery-worker celery-beat
 docker compose exec celery-worker celery -A app.jobs.celery_app.celery_app purge
 ```
