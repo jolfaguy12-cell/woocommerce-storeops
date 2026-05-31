@@ -12,9 +12,10 @@ from app.modules.users.models import User
 router = APIRouter()
 
 
-@router.post("/seed", status_code=204)
-def seed_settings(db: Session = Depends(get_db), current_user: User = Depends(require_permission("settings.manage"))) -> None:
+@router.post("/seed")
+def seed_settings(db: Session = Depends(get_db), current_user: User = Depends(require_permission("settings.manage"))) -> dict[str, str]:
     seed_system_settings(db)
+    return {"status": "ok"}
 
 
 @router.get("/", response_model=list[SettingsGroupRead])

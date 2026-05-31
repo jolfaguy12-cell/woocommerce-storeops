@@ -11,9 +11,10 @@ from app.modules.users.service import create_user, record_audit, seed_roles_and_
 router = APIRouter()
 
 
-@router.post("/bootstrap-roles", status_code=status.HTTP_204_NO_CONTENT)
-def bootstrap_roles(db: Session = Depends(get_db), current_user: User = Depends(require_permission("roles.manage"))) -> None:
+@router.post("/bootstrap-roles")
+def bootstrap_roles(db: Session = Depends(get_db), current_user: User = Depends(require_permission("roles.manage"))) -> dict[str, str]:
     seed_roles_and_permissions(db)
+    return {"status": "ok"}
 
 
 @router.get("/roles", response_model=list[RoleRead])
@@ -47,8 +48,8 @@ def edit_user(user_id: int, payload: UserUpdate, db: Session = Depends(get_db), 
     return update_user(db, user, payload, actor=current_user)
 
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("users.delete"))) -> None:
+@router.delete("/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("users.delete"))) -> dict[str, str]:
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -59,11 +60,13 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User 
     db.delete(user)
     record_audit(db, "user_deleted", current_user.id, "users", "user", user.id)
     db.commit()
+    return {"status": "ok"}
 
 
-@router.post("/{user_id}/deactivate", status_code=status.HTTP_204_NO_CONTENT)
-def deactivate_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("users.delete"))) -> None:
+@router.post("/{user_id}/deactivate")
+def deactivate_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("users.delete"))) -> dict[str, str]:
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     update_user(db, user, UserUpdate(is_active=False), actor=current_user)
+    return {"status": "ok"}
