@@ -1,0 +1,1 @@
+"""Browser admin panel routes."""
